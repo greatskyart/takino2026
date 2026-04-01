@@ -871,7 +871,7 @@ function updateCharts(pgTotal, pgRows, cols, campRev, parkRev, busRev, bbqRev, p
   const targetPct = Math.min(Math.round(pgTotal / 4100 * 100), 100);
   if (salesCharts.gauge) salesCharts.gauge.destroy();
   const gCtx = document.getElementById('gaugeChart').getContext('2d');
-  const breakPct = Math.min(Math.round(pgTotal / 2700 * 100), 100);
+  const breakPct = Math.min(Math.round(pgTotal / 2300 * 100), 100);
   salesCharts.gauge = new Chart(gCtx, {
     type: 'doughnut',
     data: {
@@ -884,7 +884,7 @@ function updateCharts(pgTotal, pgRows, cols, campRev, parkRev, busRev, bbqRev, p
           weight: 2,
         },
         {
-          // 内側：損益分岐達成率（現在/2700）
+          // 内側：損益分岐達成率（現在/2300）
           data: [breakPct, Math.max(0, 100 - breakPct)],
           backgroundColor: ['#C89010', 'transparent'],
           borderWidth: 0, circumference: 180, rotation: -90,
@@ -910,7 +910,7 @@ function updateCharts(pgTotal, pgRows, cols, campRev, parkRev, busRev, bbqRev, p
       ctx.fillStyle = '#3A6040'; ctx.font = '11px Arial';
       ctx.fillText('目標（4,100枚）達成率', cx, bottom - 20);
       ctx.fillStyle = '#C89010'; ctx.font = 'bold 11px Arial';
-      ctx.fillText('損益分岐達成率: ' + breakPct + '% / 2,700枚', cx, bottom - 4);
+      ctx.fillText('損益分岐達成率: ' + breakPct + '% / 2,300枚', cx, bottom - 4);
       ctx.restore();
     }}],
   });
@@ -988,7 +988,7 @@ function updateCharts(pgTotal, pgRows, cols, campRev, parkRev, busRev, bbqRev, p
       datasets: [
         { label: '累計販売', data: actuals, borderColor: '#1A7A3C', backgroundColor: 'rgba(26,122,60,.1)', fill: true, tension: 0.4, pointRadius: 4 },
         { label: '目標 4,100枚', data: labels.map(() => 4100), borderColor: '#C83030', borderDash: [6, 3], borderWidth: 1.5, pointRadius: 0, fill: false },
-          { label: '損益分岐 2,700枚', data: labels.map(() => 2700), borderColor: '#C89010', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
+          { label: '損益分岐 2,300枚', data: labels.map(() => 2300), borderColor: '#C89010', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
       ],
     },
     options: {
@@ -1411,7 +1411,7 @@ function renderTrendData(logs) {
       datasets: [
         { label: 'PG合計', data: pgTotals, borderColor: '#1A7A3C', backgroundColor: 'rgba(26,122,60,.1)', fill: true, tension: 0.3, pointRadius: 4 },
         { label: '目標 4,100枚', data: labels.map(() => 4100), borderColor: '#C83030', borderDash: [6,3], borderWidth: 1.5, pointRadius: 0, fill: false },
-        { label: '損益分岐 2,700枚', data: labels.map(() => 2700), borderColor: '#C89010', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false },
+        { label: '損益分岐 2,300枚', data: labels.map(() => 2300), borderColor: '#C89010', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false },
       ]
     },
     options: {
