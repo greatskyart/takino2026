@@ -194,7 +194,7 @@ tr:hover td{background:var(--surface2);}
       </div>
     </div>
     <div class="card">
-      <div class="card-title">📈 週次販売推移（累計）</div>
+      <div class="card-title">📈 販売推移（累計＋週間）</div>
       <div style="position:relative;height:200px;">
         <canvas id="trendChart"></canvas>
       </div>
@@ -633,9 +633,9 @@ tr:hover td{background:var(--surface2);}
       </div>
     </div>
     <div class="card">
-      <div class="card-title">📊 席種別 日次内訳</div>
+      <div class="card-title">📅 週間販売枚数（PG）</div>
       <div style="position:relative;height:260px;">
-        <canvas id="trendBreakdownChart"></canvas>
+        <canvas id="weeklyChart"></canvas>
       </div>
     </div>
   </div>
@@ -975,28 +975,8 @@ function updateCharts(pgTotal, pgRows, cols, campRev, parkRev, busRev, bbqRev, p
     },
   });
 
-  // 週次推移（累計）
-  if (salesCharts.trend) salesCharts.trend.destroy();
-  const tCtx = document.getElementById('trendChart').getContext('2d');
-  const weeks = window._weeklySalesCache || [];
-  const labels = weeks.length ? weeks.map(w => w.label) : ['現在'];
-  const actuals = weeks.length ? weeks.map(w => w.cumulative) : [pgTotal];
-  salesCharts.trend = new Chart(tCtx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: '累計販売', data: actuals, borderColor: '#1A7A3C', backgroundColor: 'rgba(26,122,60,.1)', fill: true, tension: 0.4, pointRadius: 4 },
-        { label: '目標 4,100枚', data: labels.map(() => 4100), borderColor: '#C83030', borderDash: [6, 3], borderWidth: 1.5, pointRadius: 0, fill: false },
-          { label: '損益分岐 2,300枚', data: labels.map(() => 2300), borderColor: '#C89010', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12 } } },
-      scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() } }, x: { grid: { display: false } } },
-    },
-  });
+  // 累計＋週間複合グラフ（ログデータ使用）
+  renderSalesTrendChart(pgTotal);
 }
 
 // ── データ収集 ──
@@ -1378,7 +1358,7 @@ function renderTrendData(logs) {
     const fmtDiff = (v) => v === null ? '—' : (v >= 0 ? '+' + v.toLocaleString() : v.toLocaleString());
     const diffC = (v) => v === null ? 'var(--sub)' : v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--sub)';
     return `<tr>
-      <td style="font-weight:800;">${log['日付']}</td>
+      <td style="font-weight:800;">${(()=>{const d=new Date(log['日付']);return log['日付']+'('+['日','月','火','水','木','金','土'][d.getDay()]+')';})()} </td>
       <td style="text-align:center;">${(Number(log['芝自由'])||0).toLocaleString()}</td>
       <td style="text-align:center;">${(Number(log['椅子持込'])||0).toLocaleString()}</td>
       <td style="text-align:center;">${(Number(log['大迫力'])||0).toLocaleString()}</td>
@@ -1421,23 +1401,37 @@ function renderTrendData(logs) {
     }
   });
 
-  // 席種別積み上げ棒グラフ
+  // 週間販売枚数グラフ（月〜日でグループ化）
   if (trendCharts.breakdown) trendCharts.breakdown.destroy();
-  const bdCtx = document.getElementById('trendBreakdownChart').getContext('2d');
+  const bdCtx = document.getElementById('weeklyChart').getContext('2d');
+  const wkMap = {}; const wkOrder = [];
+  logs.forEach((log, i) => {
+    const d = new Date(log['日付']); const day = d.getDay();
+    const mon = new Date(d); mon.setDate(d.getDate() - (day===0?6:day-1));
+    const wk = (mon.getMonth()+1) + '/' + mon.getDate() + '週';
+    if (!wkMap[wk]) { wkMap[wk] = { lastIdx: i }; wkOrder.push(wk); }
+    wkMap[wk].lastIdx = i;
+  });
+  const pgTotals2 = logs.map(l => Number(l['PG合計']) || 0);
+  const wkAmounts = wkOrder.map((wk, wi) => {
+    const last = pgTotals2[wkMap[wk].lastIdx] || 0;
+    const prev = wi===0 ? 0 : (pgTotals2[wkMap[wkOrder[wi-1]].lastIdx] || 0);
+    return Math.max(0, last - prev);
+  });
   trendCharts.breakdown = new Chart(bdCtx, {
     type: 'bar',
     data: {
-      labels,
-      datasets: [
-        { label: '芝自由', data: pg1, backgroundColor: '#1A7A3C', borderRadius: 2 },
-        { label: '椅子持込', data: pg2, backgroundColor: '#2EA854', borderRadius: 2 },
-        { label: '大迫力', data: pg3, backgroundColor: '#C89010', borderRadius: 2 },
-      ]
+      labels: wkOrder,
+      datasets: [{ label: '週間販売枚数', data: wkAmounts,
+        backgroundColor: wkAmounts.map(v => v>=100?'#1A7A3C':v>=50?'#2EA854':'#C89010'),
+        borderRadius: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12 } } },
-      scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => v.toLocaleString() } } }
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: i => '週間: '+(i.raw||0).toLocaleString()+'枚' } } },
+      scales: { x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString()+'枚' } } }
     }
   });
 }
@@ -1476,9 +1470,99 @@ async function fetchGoogleSheets(manual = false) {
     document.getElementById('gs-updated').textContent = now + ' 更新';
     showGsSyncStatus('同期完了 ✓');
     if (manual) saveSalesData();
+    fetchAndUpdateTrendCache();
   } catch(e) {
     showGsSyncStatus('取得失敗: ' + e.message, 'var(--red)');
   }
+}
+
+async function fetchAndUpdateTrendCache() {
+  try {
+    const res = await fetch(GAS_URL + '?type=trend', { signal: AbortSignal.timeout(15000) });
+    const json = await res.json();
+    if (!json.logs || !json.logs.length) return;
+    window._weeklySalesCache = json.logs.map(l => ({
+      label: l['日付'], cumulative: Number(l['PG合計']) || 0
+    }));
+    renderSalesTrendChart(0);
+  } catch(e) {}
+}
+
+function renderSalesTrendChart(currentTotal) {
+  const cache = window._weeklySalesCache || [];
+  const tLogs = cache.length ? cache : [{ label: '現在', cumulative: currentTotal }];
+  const tLabels = tLogs.map(w => w.label);
+  const tActuals = tLogs.map(w => w.cumulative);
+
+  // 週間棒データ計算
+  const twMap = {}; const twOrder = [];
+  tLogs.forEach((log, i) => {
+    const d = new Date(log.label); const day = d.getDay();
+    const mon = new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1));
+    const wk = (mon.getMonth()+1)+'/'+mon.getDate()+'週';
+    if (!twMap[wk]) { twMap[wk]={lastIdx:i}; twOrder.push(wk); }
+    twMap[wk].lastIdx = i;
+  });
+  const twAmounts = twOrder.map((wk,wi) => {
+    const last = tActuals[twMap[wk].lastIdx]||0;
+    const prev = wi===0?0:(tActuals[twMap[twOrder[wi-1]].lastIdx]||0);
+    return Math.max(0, last-prev);
+  });
+
+  if (salesCharts.trend) salesCharts.trend.destroy();
+  const tCtx = document.getElementById('trendChart');
+  if (!tCtx) return;
+  salesCharts.trend = new Chart(tCtx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: tLabels,
+      datasets: [
+        { label: '累計販売', data: tActuals, borderColor: '#1A7A3C',
+          backgroundColor: 'rgba(26,122,60,.08)', fill: true, tension: 0.3, pointRadius: 3 },
+        { label: '目標 4,100枚', data: tLabels.map(()=>4100),
+          borderColor: '#C83030', borderDash: [6,3], borderWidth: 1.5, pointRadius: 0, fill: false },
+        { label: '損益分岐 2,300枚', data: tLabels.map(()=>2300),
+          borderColor: '#C89010', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { font:{size:10}, boxWidth:12 } },
+        tooltip: { mode: 'index', intersect: false } },
+      scales: { x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() } } }
+    },
+    plugins: [{
+      id: 'wkBars',
+      afterDatasetsDraw(chart) {
+        if (!twOrder.length) return;
+        const {ctx, chartArea:{left,bottom,width,height}} = chart;
+        const maxV = Math.max(...tActuals, 4100) || 1;
+        const xScale = chart.scales.x;
+        ctx.save();
+        twOrder.forEach((wk, wi) => {
+          const firstI = tLogs.findIndex((l,i)=>{
+            const d=new Date(l.label); const day=d.getDay();
+            const mon=new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1));
+            return (mon.getMonth()+1)+'/'+mon.getDate()+'週'===wk;
+          });
+          const lastI = twMap[wk].lastIdx;
+          const midI = Math.round((firstI+lastI)/2);
+          const x = xScale.getPixelForValue ? xScale.getPixelForValue(midI) : left+(midI+0.5)*(width/tLabels.length);
+          const bw = Math.max(20, (lastI-firstI+1)*(width/tLabels.length)*0.7);
+          const bh = (twAmounts[wi]/maxV)*height;
+          const y = bottom-bh;
+          ctx.fillStyle = twAmounts[wi]>=100?'rgba(26,122,60,0.2)':twAmounts[wi]>=50?'rgba(46,168,84,0.2)':'rgba(200,144,16,0.2)';
+          ctx.fillRect(x-bw/2, y, bw, bh);
+          if (twAmounts[wi]>0) {
+            ctx.fillStyle='#1A5C2A'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
+            ctx.fillText(twAmounts[wi]+'枚', x, y-4);
+          }
+        });
+        ctx.restore();
+      }
+    }]
+  });
 }
 
 // 自動更新タイマー（5分ごと）
