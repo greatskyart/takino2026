@@ -428,9 +428,9 @@ tr:hover td{background:var(--surface2);}
       </tr>
       <tr style="background:rgba(104,64,160,.04);">
         <td>キャビンB</td>
-        <td style="text-align:center;"><input type="number" class="sales-input camp-input" data-key="cb" data-price="15000" data-pax="5" data-cap="5" min="0" value="0"></td>
+        <td style="text-align:center;"><input type="number" class="sales-input camp-input" data-key="cb" data-price="15000" data-pax="5" data-cap="4" min="0" value="0"></td>
         <td style="text-align:center;font-size:11px;color:var(--sub);">¥15,000</td>
-        <td style="text-align:center;font-size:11px;color:var(--dim);">5棟</td>
+        <td style="text-align:center;font-size:11px;color:var(--dim);">4棟</td>
         <td style="text-align:center;font-size:11px;color:var(--dim);">最大25人</td>
         <td style="text-align:center;font-size:12px;" class="camp-revenue" data-key="cb">¥0</td>
         <td style="text-align:center;" class="camp-rate" data-key="cb" data-cap="5">0%</td>
@@ -455,9 +455,9 @@ tr:hover td{background:var(--surface2);}
       </tr>
       <tr style="background:rgba(26,122,60,.04);">
         <td>スペシャルフリーサイト</td>
-        <td style="text-align:center;"><input type="number" class="sales-input camp-input" data-key="sf" data-price="10000" data-pax="5" data-cap="26" min="0" value="0"></td>
+        <td style="text-align:center;"><input type="number" class="sales-input camp-input" data-key="sf" data-price="10000" data-pax="5" data-cap="13" min="0" value="0"></td>
         <td style="text-align:center;font-size:11px;color:var(--sub);">¥10,000</td>
-        <td style="text-align:center;font-size:11px;color:var(--dim);">26区画</td>
+        <td style="text-align:center;font-size:11px;color:var(--dim);">13区画</td>
         <td style="text-align:center;font-size:11px;color:var(--dim);">最大130人</td>
         <td style="text-align:center;font-size:12px;" class="camp-revenue" data-key="sf">¥0</td>
         <td style="text-align:center;" class="camp-rate" data-key="sf" data-cap="26">0%</td>
@@ -1578,7 +1578,7 @@ function applySheetJson(data) {
     '中央口駐車場':                  { type: 'park', key: 'park2' },
     'キャビンSチケット（6名まで）': { type: 'camp', key: 'cs' },
     'キャビンAチケット（6名まで）': { type: 'camp', key: 'ca' },
-    'キャビンBチケット（5名まで）': { type: 'camp', key: 'cb' },
+    'キャビンBチケット（5名まで）': { type: 'camp_pia', key: 'cb' },  // ぴあ販売数を使用
     'キャンピングカーサイト（6名まで）': { type: 'camp', key: 'cv' },
     'スタンダードカーサイト（6名まで）': { type: 'camp', key: 'sc' },
     'スペシャルフリーテントサイト(6名まで)': { type: 'camp', key: 'sf' },
@@ -1605,6 +1605,10 @@ function applySheetJson(data) {
     } else if (info.type === 'camp') {
       var el = document.querySelector('.camp-input[data-key="' + info.key + '"]');
       if (el) el.value = d.total || 0;
+    } else if (info.type === 'camp_pia') {
+      // キャビンBはぴあ販売数を使用
+      var el = document.querySelector('.camp-input[data-key="' + info.key + '"]');
+      if (el) el.value = d.pia || 0;
     } else if (info.type === 'bbq') {
       var el = document.querySelector('.bbq-input[data-key="' + info.key + '"]');
       if (el) el.value = d.total || 0;
