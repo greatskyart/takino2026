@@ -201,6 +201,30 @@ tr:hover td{background:var(--surface2);}
     </div>
   </div>
 
+  <!-- 残日数・ペース状況（📈グラフの下） -->
+  <div class="grid3" style="margin-bottom:14px;">
+    <div class="kpi-card">
+      <div class="kpi-label">📅 公演まで</div>
+      <div class="kpi-value" style="color:var(--blue)" id="kpi-days-left">—</div>
+      <div class="kpi-sub">2026年6月20日（土）</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">🚀 現在ペース（日割）</div>
+      <div class="kpi-value" style="color:var(--green)" id="kpi-pace">—</div>
+      <div class="kpi-sub">残り<span id="kpi-pace-remain">—</span>枚</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">⚡ 目標達成に必要</div>
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:4px;">
+        <div class="kpi-value" style="color:var(--red);margin:0;" id="kpi-needed">—</div>
+        <div style="display:flex;flex-direction:column;">
+          <span style="font-size:14px;font-weight:900;" id="kpi-needed-bp-big">—</span>
+          <span style="font-size:9px;color:var(--sub);">損益分岐まで</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- アクションバー -->
   <!-- GAS未設定バナー -->
   <div id="gas-setup-banner" style="display:none;margin-bottom:12px;padding:14px 16px;background:rgba(200,144,16,.1);border:1.5px solid var(--gold);border-radius:12px;font-size:12px;line-height:1.8;">
@@ -845,6 +869,43 @@ function calcSales() {
   const totalRevenue = pgRevenue + parkRevenue + campRevenue + bbqRevenue + busRevenue;
   const rate = Math.round(pgTotal / 4100 * 100);
   document.getElementById('kpi-total').textContent = pgTotal.toLocaleString() + '枚';
+
+  // 残日数・ペース計算
+  const eventDate = new Date('2026-06-20');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const daysLeft = Math.max(0, Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24)));
+  const daysElapsed = Math.max(1, Math.ceil((today - new Date('2026-03-13')) / (1000 * 60 * 60 * 24)));
+
+  // 残日数
+  const daysLeftEl = document.getElementById('kpi-days-left');
+  if (daysLeftEl) daysLeftEl.textContent = daysLeft + '日';
+
+  // 現在ペース（販売開始からの日割）
+  const dailyPace = pgTotal > 0 ? (pgTotal / daysElapsed).toFixed(1) : 0;
+  const projectedTotal = Math.round(dailyPace * (daysElapsed + daysLeft));
+  const paceEl = document.getElementById('kpi-pace');
+  const paceRemainEl = document.getElementById('kpi-pace-remain');
+  if (paceEl) {
+    paceEl.textContent = dailyPace + '枚/日';
+    paceEl.style.color = projectedTotal >= 4100 ? 'var(--green)' : projectedTotal >= 2300 ? 'var(--gold)' : 'var(--red)';
+  }
+  if (paceRemainEl) paceRemainEl.textContent = Math.max(0, 4100 - pgTotal).toLocaleString();
+
+  // 目標達成に必要なペース
+  const neededForGoal = daysLeft > 0 ? Math.ceil((4100 - pgTotal) / daysLeft) : 0;
+  const neededForBP   = daysLeft > 0 ? Math.ceil((2300 - pgTotal) / daysLeft) : 0;
+  const neededEl = document.getElementById('kpi-needed');
+  const neededBpEl = document.getElementById('kpi-needed-bp');
+  if (neededEl) {
+    neededEl.textContent = neededForGoal > 0 ? neededForGoal + '枚/日' : '達成！';
+    neededEl.style.color = neededForGoal <= dailyPace ? 'var(--green)' : 'var(--red)';
+  }
+  const neededBpBigEl = document.getElementById('kpi-needed-bp-big');
+  if (neededBpBigEl) {
+    neededBpBigEl.textContent = neededForBP > 0 ? neededForBP + '枚/日' : '達成！';
+    neededBpBigEl.style.color = neededForBP <= dailyPace ? 'var(--green)' : 'var(--gold)';
+  }
   document.getElementById('kpi-rate').textContent = rate + '%';
   document.getElementById('kpi-parking').textContent = parkTotal.toLocaleString() + '枚';
   document.getElementById('kpi-camp').textContent = campTotal.toLocaleString() + '件';
@@ -932,7 +993,23 @@ function updateCharts(pgTotal, pgRows, cols, campRev, parkRev, busRev, bbqRev, p
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10 } } },
+        plugins: {
+          legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10,
+            generateLabels(chart) {
+              const data = chart.data;
+              return data.labels.map((label, i) => ({
+                text: label + '  ' + (data.datasets[0].data[i] || 0) + '枚',
+                fillStyle: data.datasets[0].backgroundColor[i],
+                strokeStyle: '#fff',
+                lineWidth: 2,
+                index: i,
+              }));
+            }
+          } },
+          tooltip: { callbacks: {
+            label: (ctx) => ctx.label + ': ' + ctx.raw + '枚 (' + Math.round(ctx.parsed / (eTotal+gTotal) * 100) + '%)'
+          } }
+        },
       },
     });
   } else {
