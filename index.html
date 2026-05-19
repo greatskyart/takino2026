@@ -1515,7 +1515,7 @@ function renderTrendData(logs) {
 
 // ── Google Sheets 自動取得（GAS経由） ──
 // ★ GASをデプロイ後、下のURLを書き換えてください
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9wRS-02vi0-kj7pXaIGf0-SAMPta1s4U3aet5QV8Q9yfIuV-tW5JqEiFWNm6X9jRitA/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwLDYtUo_HdOh-1Jivv7VgY-YfRgyXX9Qeu37028f7eqLuQDi7CnfVjOh2vrRT4-Imxbg/exec';
 
 // GAS URLが設定済みかチェック
 function isGasConfigured() {
@@ -1671,10 +1671,19 @@ function applySheetJson(data) {
     matched++;
     var d = data[name];
     if (info.type === 'pg') {
-      var cols = { pi: d.pia, rc: d.rc, tm: d.tm, kk: d.kk };
-      Object.keys(cols).forEach(function(col) {
-        var el = document.querySelector('.pg-input[data-row="' + info.row + '"][data-col="' + col + '"]');
-        if (el) el.value = cols[col] || 0;
+      // 早割
+      var eRow = info.row; // e1, e2, e3
+      var eCols = { pi: d.pia, rc: d.rc, tm: d.tm, kk: d.kk };
+      Object.keys(eCols).forEach(function(col) {
+        var el = document.querySelector('.pg-input[data-row="' + eRow + '"][data-col="' + col + '"]');
+        if (el) el.value = eCols[col] || 0;
+      });
+      // 一般（g1, g2, g3）
+      var gRow = eRow.replace('e', 'g');
+      var gCols = { pi: d.gen_pia||0, rc: d.gen_rc||0, tm: d.gen_tm||0, kk: d.gen_kk||0 };
+      Object.keys(gCols).forEach(function(col) {
+        var el = document.querySelector('.pg-input[data-row="' + gRow + '"][data-col="' + col + '"]');
+        if (el) el.value = gCols[col] || 0;
       });
     } else if (info.type === 'park') {
       var el = document.querySelector('.park-input[data-key="' + info.key + '"]');
